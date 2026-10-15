@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docuvexa Web - AI Document Scanner & OCR</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-left">
+            <div class="logo-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 7V4h3M17 4h3v3M4 17v3h3M20 17v3h-3M9 12l2 2 4-4"/>
+                </svg>
+            </div>
+            <div>
+                <h1>Docuvexa <span class="badge">Web</span></h1>
+                <p class="subtitle">OpenCV Edge Rectification &bull; Tesseract OCR &bull; Multi-Page PDF</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="batch-counter">
+                <span>Pages Scanned:</span>
+                <strong id="pageCountBadge">0</strong>
+            </div>
+            <button id="btnExportPdf" class="btn btn-primary" disabled>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                Export PDF
+            </button>
+            <button id="btnExportZip" class="btn btn-secondary" disabled>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Export ZIP
+            </button>
+        </div>
+    </header>
+
+    <main class="app-layout">
+        <!-- LEFT PANEL: Capture & Filters -->
+        <aside class="panel left-panel">
+            <section class="card">
+                <h2>1. Input Source</h2>
+                <div class="input-tabs">
+                    <button class="tab-btn active" id="tabCamera">Live Camera</button>
+                    <button class="tab-btn" id="tabUpload">Upload File</button>
+                </div>
+
+                <!-- Camera Container -->
+                <div id="cameraSection" class="input-content">
+                    <div class="video-wrapper">
+                        <video id="cameraVideo" autoplay playsinline></video>
+                        <canvas id="cameraCanvas" style="display:none;"></canvas>
+                        <div id="cameraOverlay" class="camera-guideline">
+                            <div class="guideline-box"></div>
+                        </div>
+                    </div>
+                    <div class="camera-actions">
+                        <button id="btnStartCamera" class="btn btn-sm btn-outline">Start Camera</button>
+                        <button id="btnCapture" class="btn btn-sm btn-accent" disabled>Capture Snapshot</button>
+                    </div>
+                </div>
+
+                <!-- Upload Container -->
+                <div id="uploadSection" class="input-content" style="display: none;">
+                    <div id="dropZone" class="drop-zone">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        <p><strong>Click to browse</strong> or drag & drop document</p>
+                        <span>Supports JPG, PNG, WEBP</span>
+                        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                    </div>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>2. Scan Enhancement Filter</h2>
+                <div class="filter-options">
+                    <label class="filter-radio">
+                        <input type="radio" name="filterMode" value="magic_bw" checked>
+                        <span class="filter-box">
+                            <strong>Magic B&W</strong>
+                            <small>Adaptive shadow-free thresholding</small>
+                        </span>
+                    </label>
+                    <label class="filter-radio">
+                        <input type="radio" name="filterMode" value="grayscale">
+                        <span class="filter-box">
+                            <strong>Grayscale</strong>
+                            <small>Smooth balanced contrast</small>
+                        </span>
+                    </label>
+                    <label class="filter-radio">
+                        <input type="radio" name="filterMode" value="enhanced_color">
+                        <span class="filter-box">
+                            <strong>Vibrant Color</strong>
+                            <small>CLAHE + Unsharp sharpen</small>
+                        </span>
+                    </label>
+                    <label class="filter-radio">
+                        <input type="radio" name="filterMode" value="original">
+                        <span class="filter-box">
+                            <strong>Original Warped</strong>
+                            <small>Geometric rectification only</small>
+                        </span>
+                    </label>
+                </div>
+                <button id="btnApplyWarp" class="btn btn-primary btn-block" disabled>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                        <polyline points="2 17 12 22 22 17"></polyline>
+                        <polyline points="2 12 12 17 22 12"></polyline>
+                    </svg>
+                    Apply Perspective Warp & Filter
+                </button>
+            </section>
+        </aside>
+
+        <!-- CENTER PANEL: Interactive Canvas Editor -->
+        <section class="panel center-panel">
+            <div class="canvas-header">
+                <div class="view-toggles">
+                    <button id="viewCornersBtn" class="btn-toggle active">Corner Rectification</button>
+                    <button id="viewProcessedBtn" class="btn-toggle">Scanned Output</button>
+                </div>
+                <div class="canvas-hints" id="canvasHint">
+                    <span>Drag corner handles (TL, TR, BR, BL) to adjust boundaries</span>
+                </div>
+                <button id="btnResetCorners" class="btn btn-xs btn-outline">Reset Bounds</button>
+            </div>
+
+            <div class="canvas-container" id="canvasContainer">
+                <div id="emptyState" class="empty-state">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                        <path d="M4 7V4h3M17 4h3v3M4 17v3h3M20 17v3h-3M12 9v6m-3-3h6"/>
+                    </svg>
+                    <h3>No Document Loaded</h3>
+                    <p>Capture from live camera or upload a file to begin automatic edge detection.</p>
+                </div>
+                
+                <!-- Interactive 4-point Crop Canvas -->
+                <canvas id="cropCanvas" class="scanner-canvas"></canvas>
+
+                <!-- Processed Result Display -->
+                <div id="processedView" class="processed-wrapper" style="display: none;">
+                    <img id="processedImg" alt="Processed Document Scan">
+                </div>
+
+                <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+                    <div class="spinner"></div>
+                    <p id="loadingText">Processing OpenCV Pipeline...</p>
+                </div>
+            </div>
+
+            <!-- Page Filmstrip -->
+            <div class="filmstrip-card">
+                <div class="filmstrip-header">
+                    <h3>Document Batch Pages</h3>
+                    <span id="batchCountText">0 pages</span>
+                </div>
+                <div class="filmstrip-items" id="filmstripItems">
+                    <div class="filmstrip-placeholder">Processed pages will appear here. Click to view or remove.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT PANEL: OCR & Tabular Analysis -->
+        <aside class="panel right-panel">
+            <section class="card ocr-card">
+                <div class="ocr-header">
+                    <h2>3. Tesseract OCR Engine</h2>
+                    <button id="btnRunOcr" class="btn btn-sm btn-accent" disabled>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 7V4h3M17 4h3v3M4 17v3h3M20 17v3h-3M9 12h6"/>
+                        </svg>
+                        Extract Text
+                    </button>
+                </div>
+
+                <div class="ocr-meta" id="ocrMeta" style="display: none;">
+                    <span class="meta-tag">Confidence: <strong id="ocrConfidence">--%</strong></span>
+                    <span class="meta-tag">Words: <strong id="ocrWords">--</strong></span>
+                </div>
+
+                <div class="ocr-tabs">
+                    <button class="subtab-btn active" id="tabPlainText">Plain Text</button>
+                    <button class="subtab-btn" id="tabTableData">Tabular CSV</button>
+                </div>
+
+                <!-- Plain Text Output -->
+                <div id="plainTextContainer" class="ocr-output-box">
+                    <textarea id="ocrTextArea" placeholder="Extracted OCR text will appear here. You can edit text before saving." readonly></textarea>
+                    <div class="ocr-actions">
+                        <button id="btnCopyText" class="btn btn-xs btn-outline">Copy Text</button>
+                        <button id="btnDownloadTxt" class="btn btn-xs btn-outline">Download .txt</button>
+                    </div>
+                </div>
+
+                <!-- Tabular Data Output -->
+                <div id="tableDataContainer" class="ocr-output-box" style="display: none;">
+                    <div class="table-scroll" id="tablePreviewWrapper">
+                        <table id="ocrTable" class="data-table">
+                            <thead>
+                                <tr><th>Extracted Data</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>No tabular structure detected yet. Run OCR to parse columns.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="ocr-actions">
+                        <button id="btnDownloadCsv" class="btn btn-xs btn-outline" disabled>Download .csv</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card quick-actions-card">
+                <h2>Direct Image Downloads</h2>
+                <div class="action-grid">
+                    <button id="btnDownloadPng" class="btn btn-outline btn-sm" disabled>Download PNG</button>
+                    <button id="btnDownloadJpg" class="btn btn-outline btn-sm" disabled>Download JPG</button>
+                </div>
+            </section>
+        </aside>
+    </main>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
